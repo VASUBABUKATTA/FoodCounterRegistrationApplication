@@ -56,12 +56,14 @@ const readQueryByMobileNo = "SELECT * FROM USERSREGISTRATIONCOUNTER WHERE MOBILE
 const deleteQueryById = "DELETE FROM USERSREGISTRATIONCOUNTER WHERE ID = ?"
 
 const updtaeQueryById = "UPDATE USERSREGISTRATIONCOUNTER SET OWNERNAME = ?,MOBILENO = ?,EMAIL = ?,COUNTERNAME = ? WHERE ID = ?"
+const updtaeQueryByIdForImage = "UPDATE USERSREGISTRATIONCOUNTER SET IMAGEPATH = ? WHERE ID = ?"
 
 // checking duplicates are founded or not:
 const checkEmail = "SELECT * FROM USERSREGISTRATIONCOUNTER WHERE EMAIL = ?"
 const checkMobilNo = "SELECT * FROM USERSREGISTRATIONCOUNTER WHERE MOBILENO = ?"
 const checkCounterName = "SELECT * FROM USERSREGISTRATIONCOUNTER WHERE COUNTERNAME = ?"
 
+const updtaeQueryByIdForAvailability = "UPDATE USERSREGISTRATIONCOUNTER SET AVAILABLE = ? WHERE ID = ?"
 // uploaded directory
 const uploadDir = path.join(__dirname, `../uploads/`);
 
@@ -275,58 +277,37 @@ router.put('/update/:id',(req,res)=>{
     });
 });
 
-// router.put('/update/:id', (req, res) => {
-//     const id = req.params.id;
-//     const { OWNERNAME, MOBILENO, EMAIL, COUNTERNAME } = req.body;
+// Route to update the image only
+router.put('/update-image/:id', upload.single("image"), (req, res) => {
+    const id = req.params.id;
+    if (!id) {
+        return res.status(400).json({ message: "ID parameter required" });
+    }
 
-//     if (!id) {
-//         return res.status(400).json({ message: "ID parameter required" });
-//     }
+    if (!req.file) {
+        return res.status(400).json({ message: "No image file uploaded" });
+    }
 
+    const imagePath = `/uploads/${req.file.filename}`; // Path to store in DB
 
-//     db.query(readQueryById, [id], (err, result) => {
-//         if (err) { return res.status(500).json({ error: "Database error", details: err }); }
-//         if (result.length > 0) {
-//  // Check if the MOBILE NUMBER, EMAIL, or COUNTERNAME already exists in the DB (excluding current ID)
-//  db.query(checkMobilNo, [MOBILENO], (err, result) => {
-//     if (err) return res.status(500).json(err);
-
-//     if (result.length > 0 && result[0].ID !== id) {
-//         return res.status(400).json({ message: "Mobile number already exists." });
-//     }
-
-//     // Check for EMAIL duplicates
-//     db.query(checkEmail, [EMAIL], (err, result) => {
-//         if (err) return res.status(500).json(err);
-
-//         if (result.length > 0 && result[0].ID !== id) {
-//             return res.status(400).json({ message: "Email already exists." });
-//         }
-
-//         // Check for COUNTERNAME duplicates
-//         db.query(checkCounterName, [COUNTERNAME], (err, result) => {
-//             if (err) return res.status(500).json(err);
-
-//             if (result.length > 0 && result[0].ID !== id) {
-//                 return res.status(400).json({ message: "Counter name already exists." });
-//             }
-
-//             // Proceed with the update if no duplicates are found
-//             db.query(updtaeQueryById, [OWNERNAME, MOBILENO, EMAIL, COUNTERNAME, id], (updateErr, updateResult) => {
-//                 if (updateErr) {
-//                     return res.status(500).json({ error: "Updation failed", details: updateErr });
-//                 }
-//                 return res.status(201).json({ message: "Successfully updated record with ID: " + id });
-//             });
-//         });
-//     });
-// });
-//         }
-//         else{
-//             return res.status(404).json({ message: "No record found for ID: " + id });
-//         }
-//     })
-// });
+    // Checking if the ID exists in the database
+    db.query(readQueryById, [id], (err, result) => {
+        if (err) {
+            return res.status(500).json({ error: "Database error", details: err });
+        }
+        if (result.length > 0) {
+            
+            db.query(updtaeQueryByIdForImage, [imagePath, id], (updateErr, updateResult) => {
+                if (updateErr) {
+                    return res.status(500).json({ error: "Image update failed", details: updateErr });
+                }
+                return res.status(200).json({ message: "Image successfully updated for ID: " + id, imagePath });
+            });
+        } else {
+            return res.status(404).json({ message: "No record found for ID: " + id });
+        }
+    });
+});
 
 // to retreive image by id
 router.get('/getImage/:id', (req, res) => {
@@ -343,6 +324,84 @@ router.get('/getImage/:id', (req, res) => {
         res.json({ imageUrl: `http://localhost:9090${imagePath}` }); // Replace PORT with your actual port
     });
 });
+
+router.get("/getAllWithAllData", (req, res) => {
+    const getCounterName = "SELECT COUNTERNAME, ID FROM USERSREGISTRATIONCOUNTER";
+
+    db.query(getCounterName, (err, counters) => {
+        if (err) {
+            console.error(err);
+            return res.status(400).json({ error: "Database query failed", details: err });
+        }
+
+        if (counters.length === 0) {
+            return res.status(200).json([]); // Return empty array if no counters found
+        }
+
+        let counterData = [];
+        let pendingQueries = counters.length; // Track pending queries
+
+        counters.forEach((counter) => {
+            const getMenu = "SELECT category, item_name, price FROM menu_items WHERE counter_id = ?";
+
+            db.query(getMenu, [counter.ID], (err, menuItems) => {
+                if (err) {
+                    console.error(err);
+                    return res.status(400).json({ error: "Database query failed", details: err });
+                }
+
+                // Group menu items by category
+                let categoriesMap = {};
+                menuItems.forEach(item => {
+                    if (!categoriesMap[item.category]) {
+                        categoriesMap[item.category] = {
+                            name: item.category,
+                            menu: []
+                        };
+                    }
+                    categoriesMap[item.category].menu.push({ name: item.item_name, price: item.price });
+                });
+
+                counterData.push({
+                    COUNTERNAME: counter.COUNTERNAME,
+                    Categories: Object.values(categoriesMap)
+                });
+
+                pendingQueries--;
+
+                // Send response when all queries are completed
+                if (pendingQueries === 0) {
+                    res.status(200).json(counterData);
+                }
+            });
+        });
+    });
+});
+
+router.put('/getById/availability/:id/:availability',(req,res)=>{
+    const id = req.params.id;
+    const availability = req.params.availability;
+    if(!id)return res.status(400).json({message :" ID Parameter is required"})
+        else{
+        db.query(readQueryById,[id],(err,result)=>{
+            if(err) return res.status(400).json(err);
+            else{
+                if (result.length > 0) {
+                    // return res.status(200).json(result[0]); 
+                    db.query(updtaeQueryByIdForAvailability,[availability,id],(updateerr,updateres)=>{
+                        if(updateerr) return res.status(400).json(updateerr);
+                        else{
+                            return res.status(201).json({ message: "Updated record Successfully for ID: " + id });
+                        }
+                    })
+                } else {
+                    return res.status(404).json({ message: "No record found for ID: " + id });
+                }
+            } 
+        })
+    }
+})
+
 
 
 

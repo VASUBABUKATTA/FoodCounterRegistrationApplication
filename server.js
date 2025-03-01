@@ -15,7 +15,8 @@ app.use(express.urlencoded({ extended: true })); // Parse form data
 
 // Import routes
 const counterRegistrationApis = require('./Routes/CounterRegistration')
-const menuItemRegistrationApis = require('./Routes/MenuItemsForCounter')
+// const menuItemRegistrationApis = require('./Routes/MenuItemsForCounter')
+const menuItemRegistrationApis = require('./Routes/MenuItems')
 const userOrders = require('./Routes/UserOrders')
 
 // Use routes
