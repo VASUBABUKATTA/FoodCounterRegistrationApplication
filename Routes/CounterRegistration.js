@@ -225,6 +225,23 @@ router.get('/getByMobileNo/:mobNo',(req,res)=>{
     }
 })
 
+router.get('/getCounterI/ByMobileNo/:mobNo',(req,res)=>{
+    const mobNo = req.params.mobNo;
+    if(!mobNo)return res.status(400).json({message :" MobileNo Parameter is required"})
+        else{
+        db.query(readQueryByMobileNo,[mobNo],(err,result)=>{
+            if(err) return res.status(400).json(err);
+            else{
+                if (result.length > 0) {
+                    return res.status(200).json({ message: result[0]}); 
+                } else {
+                    return res.status(404).json({ message: "No record found for the MobileNo: " + mobNo });
+                }
+            } 
+        })
+    }
+})
+
 
 router.delete('/delete/:id', (req, res) => {
     const id = req.params.id;

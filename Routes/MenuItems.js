@@ -260,6 +260,81 @@ router.get("/getAllCategories", (req, res) => {
     });
 });
 
+// router.get("/getcategorysById/:counterId", (req, res) => {
+//     const { counterId } = req.params;
+//     console.log(counterId);
+
+//     const getQuery = 'select * from Categorys where counter_id= ?';
+
+//     db.query(getQuery, [counterId], (err, result) => {
+//         if (err) {
+//             console.log(err);
+//             return res.status(500).json({ message: "err while retriving category;s by counterId" })
+//         }
+//         else {
+//             console.log(result);
+//             return res.status(200).json(result)
+
+//         }
+//     })
+// })
+
+router.get("/getcategorysById/:counterId", (req, res) => {
+    const { counterId } = req.params;
+    console.log("Requested Counter ID:", counterId);
+
+    const getQuery = `
+        SELECT c.id AS categoryId, c.name AS categoryName, c.available AS categoryAvailability, 
+               m.id AS itemId, m.name AS itemName, m.price, m.available AS itemAvailability
+        FROM Categorys c  
+        LEFT JOIN menuitems m ON c.id = m.category_id
+        WHERE c.counter_id = ? 
+    `;
+
+    db.query(getQuery, [counterId], (err, results) => {
+        if (err) {
+            console.error("Database error:", err);
+            return res.status(500).json({ message: "Error while retrieving categories by counterId" });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ message: "No data found for the given counter ID" });
+        }
+
+        // Transform the result to match the expected JSON structure
+        const categoryMap = {};
+
+        results.forEach(row => {
+            const { categoryId, categoryName, categoryAvailability, itemId, itemName, price, itemAvailability } = row;
+
+            // If category doesn't exist, create it
+            if (!categoryMap[categoryId]) {
+                categoryMap[categoryId] = {
+                    name: categoryName,
+                    categoryId,
+                    categoryAvailability,
+                    menu: []
+                };
+            }
+
+            // Add menu items if available
+            if (itemId) {
+                categoryMap[categoryId].menu.push({
+                    name: itemName,
+                    price,
+                    itemId,
+                    itemAvailability
+                });
+            }
+        });
+
+        // Convert the map to an array
+        const formattedResponse = Object.values(categoryMap);
+
+        return res.status(200).json(formattedResponse);
+    });
+});
+
 router.put("/updateCategory", (req, res) => {
 
     const { categoryId, counter_id, categoryName } = req.body;
@@ -274,20 +349,39 @@ router.put("/updateCategory", (req, res) => {
             return res.status(500).json({ message: "err while checking isCategoryPresent" })
         }
         else {
-            if (result.length > 0) {
-                return res.status(404).json({ message: "Counter already exists " });
-            }
-            else {
+            // if (result.length > 0) {
+            //     return res.status(404).json({ message: "Counter already exists " });
+            // }
+            // else {
                 db.query(updateQuery, [categoryName.toLowerCase(), categoryId], (err, result) => {
                     if (err) {
                         console.log(err);
                         return res.status(400).json(err);
                     }
-                    else return res.status(201).json({ message: "Counter updated Successfully " });
+                    else return res.status(201).json({ message: "Category updated Successfully " });
                 })
-            }
+            // }
         }
     })
+})
+
+router.put("/updateItemStatus", (req, res) => {
+    const { available, itemId } = req.body
+
+    console.log(req.body);
+
+
+    const updateQuery = "update menuItems SET available=? where id=? ";
+
+    db.query(updateQuery, [available, itemId], (err, result) => {
+        if (err) {
+            console.log(err);
+            return res.status(500).json({ message: "err while updating item status" });
+        }
+        else
+            return res.status(201).json({ message:` Item Status updated to ${available} for itemId ${itemId} `})
+
+    })
 })
 
 router.delete("/deleteCategory/:categoryId", (req, res) => {
