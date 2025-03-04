@@ -216,9 +216,9 @@ router.get('/getByMobileNo/:mobNo',(req,res)=>{
             if(err) return res.status(400).json(err);
             else{
                 if (result.length > 0) {
-                    return res.status(200).json({ message: "record found for the MobileNo: " + mobNo }); 
+                    return res.status(200).json({ message: "record found for the MobileNo: "}); 
                 } else {
-                    return res.status(404).json({ message: "No record found for the MobileNo: " + mobNo });
+                    return res.status(404).json({ message: "No record found for the MobileNo: "});
                 }
             } 
         })
@@ -235,7 +235,7 @@ router.get('/getCounterI/ByMobileNo/:mobNo',(req,res)=>{
                 if (result.length > 0) {
                     return res.status(200).json({ message: result[0]}); 
                 } else {
-                    return res.status(404).json({ message: "No record found for the MobileNo: " + mobNo });
+                    return res.status(404).json({ message: "No record found for the MobileNo: "});
                 }
             } 
         })
@@ -261,7 +261,7 @@ router.delete('/delete/:id', (req, res) => {
                 if (deleteErr) {
                     return res.status(500).json({ error: "Deletion failed", details: deleteErr });
                 }
-                return res.status(200).json({ message: "Successfully deleted record with ID: " + id });
+                return res.status(200).json({ message: "Successfully deleted record "});
             });
         } else {
             return res.status(404).json({ message: "No record found for ID: " + id });
@@ -286,7 +286,7 @@ router.put('/update/:id',(req,res)=>{
                 if (updateErr) {
                     return res.status(500).json({ error: "Updation failed", details: updateErr });
                 }
-                return res.status(201).json({ message: "Successfully updated for the record with ID: " + id });
+                return res.status(201).json({ message: "Successfully updated for the record" });
             });
         } else {
             return res.status(404).json({ message: "No record found for ID: " + id });
@@ -408,7 +408,7 @@ router.put('/getById/availability/:id/:availability',(req,res)=>{
                     db.query(updtaeQueryByIdForAvailability,[availability,id],(updateerr,updateres)=>{
                         if(updateerr) return res.status(400).json(updateerr);
                         else{
-                            return res.status(201).json({ message: "Updated record Successfully for ID: " + id });
+                            return res.status(201).json({ message: "Updated record Successfully "});
                         }
                     })
                 } else {

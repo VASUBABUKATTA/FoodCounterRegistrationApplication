@@ -87,11 +87,11 @@ router.post('/save', (req, res) => {
         if (result.length > 0) {
             db.query(insertQuery, [item_name, description, price, category, available, counter_id], (err, result) => {
                 if (err) return res.status(400).json(err);
-                else return res.status(201).json({ message: "Counter added Successfully ", menuId: result.insertId });
+                else return res.status(201).json({ message: "Counter added Successfully "});
             })
         }
         else {
-            return res.status(404).json({ message: "CounterId was not available in counter table : " + counter_id });
+            return res.status(404).json({ message: "Counter was not available in counter table "});
         }
     })
 
@@ -127,7 +127,7 @@ router.post("/addCategory", (req, res) => {
                 }
                 else {
                     if (result.length > 0) {
-                        return res.status(404).json({ message: "Counter already exists " });
+                        return res.status(404).json({ message: "Category already exists " });
                     }
                     else {
                         db.query(insertQuery, [categoryName.toLowerCase(), available, counter_id], (err, result) => {
@@ -136,7 +136,7 @@ router.post("/addCategory", (req, res) => {
                                 console.log(err);
                                 return res.status(400).json(err);
                             }
-                            else return res.status(201).json({ message: "Counter added Successfully " });
+                            else return res.status(201).json({ message: "Category added Successfully " });
                         })
                     }
                 }
@@ -145,7 +145,7 @@ router.post("/addCategory", (req, res) => {
 
         }
         else {
-            return res.status(404).json({ message: "CounterId was not available in counter table : " + counter_id });
+            return res.status(404).json({ message: "Counter was not available in counter table  "});
         }
     })
 
@@ -192,7 +192,7 @@ router.post("/addItems", (req, res) => {
                 })
             }
             else {
-                return res.status(500).json({ message: "categoryID not present" })
+                return res.status(500).json({ message: "category not present" })
             }
 
         }
@@ -349,10 +349,10 @@ router.put("/updateCategory", (req, res) => {
             return res.status(500).json({ message: "err while checking isCategoryPresent" })
         }
         else {
-            // if (result.length > 0) {
-            //     return res.status(404).json({ message: "Counter already exists " });
-            // }
-            // else {
+            if (result.length > 0) {
+                return res.status(404).json({ message: "Category already exists " });
+            }
+            else {
                 db.query(updateQuery, [categoryName.toLowerCase(), categoryId], (err, result) => {
                     if (err) {
                         console.log(err);
@@ -360,7 +360,7 @@ router.put("/updateCategory", (req, res) => {
                     }
                     else return res.status(201).json({ message: "Category updated Successfully " });
                 })
-            // }
+            }
         }
     })
 })
@@ -470,7 +470,7 @@ router.put("/updateItem", (req, res) => {
         }
 
         // Check if the item name already exists for the same category_id
-        db.query(isItemPresent, [itemName.toLowerCase(), category_id, itemId], (err, result) => {
+        db.query(isItemPresent, [itemName, category_id, itemId], (err, result) => {
             if (err) {
                 console.log(err);
                 return res.status(500).json({ message: "Error checking item presence" });
