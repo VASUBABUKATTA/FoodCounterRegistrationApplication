@@ -342,7 +342,8 @@ router.get('/getImage/:id', (req, res) => {
     });
 });
 
-router.get("/getAllWithAllData", (req, res) => {
+
+router.get("/getAllWithAll", (req, res) => {
     const getCounterName = "SELECT COUNTERNAME, ID FROM USERSREGISTRATIONCOUNTER";
 
     db.query(getCounterName, (err, counters) => {
@@ -380,6 +381,8 @@ router.get("/getAllWithAllData", (req, res) => {
                 });
 
                 counterData.push({
+
+                    counterId: counter.ID,
                     COUNTERNAME: counter.COUNTERNAME,
                     Categories: Object.values(categoriesMap)
                 });
@@ -394,6 +397,136 @@ router.get("/getAllWithAllData", (req, res) => {
         });
     });
 });
+
+router.get("/getAllWithAllData", (req, res) => {
+    const getCounters = "SELECT ID, COUNTERNAME,available FROM USERSREGISTRATIONCOUNTER";
+
+    db.query(getCounters, (err, counters) => {
+        if (err) {
+            console.error(err);
+            return res.status(400).json({ error: "Database query failed", details: err });
+        }
+
+        if (counters.length === 0) {
+            return res.status(200).json([]);
+        }
+
+        let counterData = [];
+        let pendingCounters = counters.length;
+
+        counters.forEach((counter) => {
+            const getCategories = "SELECT id, name, available FROM Categorys WHERE counter_id = ?";
+
+            db.query(getCategories, [counter.ID], (err, categories) => {
+                if (err) {
+                    console.error(err);
+                    return res.status(400).json({ error: "Database query failed", details: err });
+                }
+
+                let categoryData = [];
+                let pendingCategories = categories.length;
+
+                if (categories.length === 0) {
+                    counterData.push({
+                        counterId: counter.ID,
+                        counterName: counter.COUNTERNAME,
+                        available: counter.available,
+                        Categories: []
+                    });
+                    pendingCounters--;
+                    if (pendingCounters === 0) {
+                        res.status(200).json(counterData);
+                    }
+                    return;
+                }
+
+                categories.forEach((category) => {
+                    const getMenuItems = "SELECT name, price, available FROM menuItems WHERE category_id = ?";
+
+                    db.query(getMenuItems, [category.id], (err, menuItems) => {
+                        if (err) {
+                            console.error(err);
+                            return res.status(400).json({ error: "Database query failed", details: err });
+                        }
+
+                        categoryData.push({
+                            name: category.name,
+                            available: category.available,
+                            menu: menuItems.map(item => ({ name: item.name, price: item.price, available: item.available }))
+                        });
+
+                        pendingCategories--;
+                        if (pendingCategories === 0) {
+                            counterData.push({
+                                counterId: counter.ID,
+                                counterName: counter.COUNTERNAME,
+                                available:counter.available,
+                                Categories: categoryData
+                            });
+                            pendingCounters--;
+                            if (pendingCounters === 0) {
+                                res.status(200).json(counterData);
+                            }
+                        }
+                    });
+                });
+            });
+        });
+    });
+});
+
+// router.get("/getAllWithAllData", (req, res) => {
+//     const getCounterName = "SELECT COUNTERNAME, ID FROM USERSREGISTRATIONCOUNTER";
+
+//     db.query(getCounterName, (err, counters) => {
+//         if (err) {
+//             console.error(err);
+//             return res.status(400).json({ error: "Database query failed", details: err });
+//         }
+
+//         if (counters.length === 0) {
+//             return res.status(200).json([]); // Return empty array if no counters found
+//         }
+
+//         let counterData = [];
+//         let pendingQueries = counters.length; // Track pending queries
+
+//         counters.forEach((counter) => {
+//             const getMenu = "SELECT category, item_name, price FROM menu_items WHERE counter_id = ?";
+
+//             db.query(getMenu, [counter.ID], (err, menuItems) => {
+//                 if (err) {
+//                     console.error(err);
+//                     return res.status(400).json({ error: "Database query failed", details: err });
+//                 }
+
+//                 // Group menu items by category
+//                 let categoriesMap = {};
+//                 menuItems.forEach(item => {
+//                     if (!categoriesMap[item.category]) {
+//                         categoriesMap[item.category] = {
+//                             name: item.category,
+//                             menu: []
+//                         };
+//                     }
+//                     categoriesMap[item.category].menu.push({ name: item.item_name, price: item.price });
+//                 });
+
+//                 counterData.push({
+//                     COUNTERNAME: counter.COUNTERNAME,
+//                     Categories: Object.values(categoriesMap)
+//                 });
+
+//                 pendingQueries--;
+
+//                 // Send response when all queries are completed
+//                 if (pendingQueries === 0) {
+//                     res.status(200).json(counterData);
+//                 }
+//             });
+//         });
+//     });
+// });
 
 router.put('/getById/availability/:id/:availability',(req,res)=>{
     const id = req.params.id;

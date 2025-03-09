@@ -515,23 +515,63 @@ router.delete("/deleteItem/:itemId", (req, res) => {
     })
 })
 
+// router.put("/updateCategoryStatus", (req, res) => {
+
+//     const { available, categoryId } = req.body
+
+//     const updateQuery = "update Categorys set available=? where id=? ";
+
+//     db.query(updateQuery, [available, categoryId], (err, result) => {
+//         if (err) {
+//             console.log(err);
+//             return res.status(500).json({ message: "err while updating category status" });
+//         }
+//         else return res.status(201).json({ message: `Category Status updated to ${available} for CategoryId ${categoryId}` })
+//     })
+
+// })
+
 router.put("/updateCategoryStatus", (req, res) => {
+    try {
+        const { available, categoryId } = req.body;
 
-    const { available, categoryId } = req.body
-
-    const updateQuery = "update Categorys set available=? where id=? ";
-
-    db.query(updateQuery, [available, categoryId], (err, result) => {
-        if (err) {
-            console.log(err);
-            return res.status(500).json({ message: "err while updating category status" });
+        if (available === undefined || categoryId === undefined) {
+            return res.status(400).json({ message: "Missing required fields: available and categoryId" });
         }
-        else return res.status(201).json({ message: `Category Status updated to ${available} for CategoryId ${categoryId}` })
-    })
 
-})
+        console.log("Updating category status:", req.body);
 
+        const updateCategoryQuery = "UPDATE Categorys SET available=? WHERE id=?";
+        const updateMenuItemsQuery = "UPDATE menuItems SET available=? WHERE category_id=?";
 
+        db.query(updateCategoryQuery, [available, categoryId], (err, categoryResult) => {
+            if (err) {
+                console.error("Error updating category status:", err);
+                return res.status(500).json({ message: "Error while updating category status", error: err });
+            }
+
+            if (categoryResult.affectedRows === 0) {
+                return res.status(404).json({ message:` Category with ID ${categoryId} not found `});
+            }
+
+            db.query(updateMenuItemsQuery, [available, categoryId], (err, menuResult) => {
+                if (err) {
+                    console.error("Error updating menu item status:", err);
+                    return res.status(500).json({ message: "Error while updating menu item status", error: err });
+                }
+
+                return res.status(201).json({
+                    message: `Category and associated menu items updated to ${available}`,
+                    updatedCategoryRows: categoryResult.affectedRows,
+                    updatedMenuItemRows: menuResult.affectedRows,
+                });
+            });
+        });
+    } catch (error) {
+        console.error("Unexpected error:", error);
+        res.status(500).json({ message: "Internal server error", error: error.message });
+    }
+});
 
 
 router.get('/getAll', (req, res) => {
